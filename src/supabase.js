@@ -63,6 +63,11 @@ const request = async (path, options = {}) => {
 };
 
 export const database = {
+  getProfileRole: async (userId) => {
+    if (!userId) return 'staff';
+    const rows = await request(`profiles?select=role&id=eq.${encodeURIComponent(userId)}`);
+    return rows?.[0]?.role || 'staff';
+  },
   getProducts: () => request('products?select=*&order=name.asc'),
   getCustomers: () => request('customers?select=*&order=name.asc'),
   getOrders: () => request('delivery_orders?select=*,customers(name,mobile,address,city),delivery_order_items(*)&order=created_at.desc'),
