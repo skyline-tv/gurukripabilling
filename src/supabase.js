@@ -23,6 +23,7 @@ export const database = {
   updateCustomer: (id, customer) => request(`customers?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: customer, prefer: 'return=representation' }),
   deleteCustomer: (id) => request(`customers?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }),
   updateOrder: (id, order) => request(`delivery_orders?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: order, prefer: 'return=representation' }),
+  updateOrderWithItems: (orderId, customerId, items) => request('rpc/update_delivery_order', { method: 'POST', body: { p_order_id: orderId, p_customer_id: customerId, p_items: items } }),
   updateProduct: (id, product) => request(`products?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: product, prefer: 'return=representation' }),
   deleteProduct: (id) => request(`products?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }),
   addMovement: (movement) => request('inventory_movements', { method: 'POST', body: movement, prefer: 'return=representation' }),

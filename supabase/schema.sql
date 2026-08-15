@@ -158,3 +158,48 @@ create policy "Authenticated users can manage products" on public.products for a
 create policy "Authenticated users can manage delivery orders" on public.delivery_orders for all to authenticated using (true) with check (true);
 create policy "Authenticated users can manage delivery items" on public.delivery_order_items for all to authenticated using (true) with check (true);
 create policy "Authenticated users can manage inventory movements" on public.inventory_movements for all to authenticated using (true) with check (true);
+
+-- Updates a delivered bill atomically: restores its old stock, replaces lines, then deducts new stock.
+create or replace function public.update_delivery_order(p_order_id uuid, p_customer_id uuid, p_items jsonb)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  old_item record;
+  new_item record;
+  new_total numeric(12, 2) := 0;
+begin
+  if not exists (select 1 from public.delivery_orders where id = p_order_id) then
+    raise exception 'Delivery order not found';
+  end if;
+
+  if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
+    raise exception 'A delivery order needs at least one item';
+  end if;
+
+  for old_item in select * from public.delivery_order_items where delivery_order_id = p_order_id loop
+    update public.products set current_stock = current_stock + old_item.quantity, updated_at = now() where id = old_item.product_id;
+  end loop;
+  delete from public.inventory_movements where reference_type = 'delivery_order' and reference_id = p_order_id;
+  delete from public.delivery_order_items where delivery_order_id = p_order_id;
+
+  for new_item in select * from jsonb_to_recordset(p_items) as x(product_id uuid, description text, rate numeric, mrp numeric, quantity numeric, amount numeric) loop
+    if new_item.product_id is null or new_item.quantity is null or new_item.quantity <= 0 then
+      raise exception 'Each item needs a product and a positive quantity';
+    end if;
+    update public.products set current_stock = current_stock - new_item.quantity, updated_at = now()
+      where id = new_item.product_id and current_stock >= new_item.quantity;
+    if not found then
+      raise exception 'Insufficient stock for product %', new_item.product_id;
+    end if;
+    insert into public.delivery_order_items (delivery_order_id, product_id, description, rate, mrp, quantity, amount)
+      values (p_order_id, new_item.product_id, new_item.description, new_item.rate, new_item.mrp, new_item.quantity, new_item.amount);
+    insert into public.inventory_movements (product_id, movement_type, quantity, reference_type, reference_id, created_by)
+      values (new_item.product_id, 'stock_out', new_item.quantity, 'delivery_order', p_order_id, auth.uid());
+    new_total := new_total + new_item.amount;
+  end loop;
+
+  update public.delivery_orders set customer_id = p_customer_id, taxable_amount = new_total, total_amount = new_total, status = 'delivered', updated_at = now() where id = p_order_id;
+end;
+$$;
