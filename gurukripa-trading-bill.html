@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gurukripa Trading - Delivery Order</title>
+<style>
+  * { box-sizing: border-box; }
+
+  :root {
+    --navy: #1b2a4a;
+    --gold: #c9a227;
+    --blue-band: #dbe4f5;
+    --blue-band-dark: #b9c9ea;
+    --ink: #1a1a1a;
+    --hair: #000;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #eceff3;
+    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    padding: 28px 0 60px;
+  }
+
+  /* ---------- A4 page ---------- */
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #fff;
+    position: relative;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.22);
+  }
+
+  .bill {
+    margin: 10mm 10mm;
+    border: 1.6px solid var(--hair);
+    display: flex;
+    flex-direction: column;
+    min-height: calc(297mm - 20mm);
+    position: relative;
+  }
+
+  /* corner accents for a premium touch */
+  .bill::before, .bill::after {
+    content: "";
+    position: absolute;
+    width: 14mm;
+    height: 14mm;
+    border: 1.4px solid var(--gold);
+    pointer-events: none;
+  }
+  .bill::before { top: -1.6px; left: -1.6px; border-right: none; border-bottom: none; }
+  .bill::after  { bottom: -1.6px; right: -1.6px; border-left: none; border-top: none; }
+
+  /* ---------- Header ---------- */
+  .header {
+    text-align: center;
+    padding: 7mm 6mm 3mm;
+    border-bottom: 1.6px solid var(--hair);
+    background: linear-gradient(180deg, #fbfbfb 0%, #ffffff 100%);
+  }
+  .header h1 {
+    margin: 0;
+    font-size: 26pt;
+    font-weight: 800;
+    letter-spacing: 2.5px;
+    color: var(--navy);
+  }
+  .header .rule {
+    width: 46mm;
+    height: 1.4px;
+    background: var(--gold);
+    margin: 2mm auto 2.5mm;
+  }
+  .shop-line {
+    font-weight: 600;
+    font-size: 9.5pt;
+    letter-spacing: 0.3px;
+    color: #333;
+  }
+
+  .gst-fssai {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 9.5pt;
+    letter-spacing: 0.2px;
+    padding: 2.4mm 6mm;
+    border-bottom: 1.6px solid var(--hair);
+    background: #fafafa;
+  }
+
+  .banner {
+    background: linear-gradient(180deg, #ffe94d 0%, #ffd400 100%);
+    text-align: center;
+    font-weight: 800;
+    font-size: 12pt;
+    letter-spacing: 5px;
+    padding: 2.4mm;
+    border-bottom: 1.6px solid var(--hair);
+    text-transform: uppercase;
+    color: #2a2100;
+  }
+
+  /* ---------- Party / Date info ---------- */
+  .info-section {
+    display: flex;
+    border-bottom: 1.6px solid var(--hair);
+  }
+  .info-col {
+    flex: 1;
+    padding: 5mm 6mm;
+    font-weight: 700;
+    font-size: 9.5pt;
+  }
+  .info-col.left { border-right: 1.6px solid var(--hair); }
+  .info-line {
+    display: flex;
+    align-items: baseline;
+    margin-bottom: 5mm;
+  }
+  .info-line:last-child { margin-bottom: 1mm; }
+  .info-line .label {
+    white-space: nowrap;
+    margin-right: 2.5mm;
+    color: var(--ink);
+  }
+  .info-line .fill {
+    flex: 1;
+    border-bottom: 0.8px solid #000;
+    height: 4mm;
+  }
+
+  /* ---------- Items table ---------- */
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    flex: 1;
+  }
+  table.items th {
+    background: linear-gradient(180deg, var(--blue-band) 0%, var(--blue-band-dark) 100%);
+    border: 0.8px solid var(--hair);
+    font-size: 9.5pt;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2.6mm 1mm;
+    text-align: center;
+    color: var(--navy);
+  }
+  table.items td {
+    border: 0.8px solid var(--hair);
+    height: 8mm;
+    font-size: 9.5pt;
+    text-align: center;
+    padding: 1mm 2.5mm;
+  }
+  table.items td.sr { font-weight: 700; color: #333; }
+  table.items td.desc { text-align: left; }
+  th.sr, td.sr { width: 12mm; }
+  th.desc { text-align: center; }
+  th.rate, td.rate { width: 22mm; }
+  th.qty, td.qty { width: 22mm; }
+  th.amount, td.amount { width: 36mm; }
+
+  /* ---------- Footer ---------- */
+  .footer {
+    display: flex;
+    border-top: 1.6px solid var(--hair);
+  }
+  .terms {
+    flex: 1.4;
+    padding: 4mm 6mm;
+    border-right: 1.6px solid var(--hair);
+  }
+  .terms .jurisdiction {
+    text-align: center;
+    text-decoration: underline;
+    font-weight: 700;
+    margin-bottom: 3mm;
+    font-size: 8.5pt;
+    letter-spacing: 0.3px;
+    color: var(--navy);
+  }
+  .terms .cert {
+    text-align: center;
+    line-height: 1.6;
+    font-size: 7.8pt;
+    color: #333;
+  }
+
+  .totals { flex: 1; }
+  .totals table {
+    width: 100%;
+    height: 100%;
+    border-collapse: collapse;
+  }
+  .totals td {
+    border: 0.8px solid var(--hair);
+    font-size: 9.5pt;
+    padding: 1.8mm 3mm;
+  }
+  .totals td.label { font-weight: 700; }
+  .totals td.value { width: 42%; }
+  .totals tr.tax td.label { font-size: 10.5pt; }
+  .totals tr.total td.label { font-size: 11pt; color: var(--navy); }
+  .totals tr.total td { background: #f6f7fb; }
+
+  .signature {
+    text-align: right;
+    padding: 4mm 8mm 2mm;
+    font-weight: 700;
+    font-size: 9.5pt;
+  }
+  .signature .auth { margin-top: 13mm; }
+
+  .blue-block {
+    height: 26mm;
+    background: linear-gradient(180deg, var(--blue-band) 0%, var(--blue-band-dark) 100%);
+    border-top: 1.6px solid var(--hair);
+    margin-top: auto;
+  }
+
+  @media print {
+    html, body { background: #fff; }
+    body { padding: 0; }
+    .page { box-shadow: none; width: auto; min-height: auto; }
+    .bill { min-height: auto; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="bill">
+      <div class="header">
+        <h1>GURUKRIPA TRADING</h1>
+        <div class="rule"></div>
+        <div class="shop-line">SHOP NO 1, SATYA SAI MAHAL, GANDHI ROAD, ULHASNAGAR - 5 &nbsp;*&nbsp; MOB. 9623079356</div>
+      </div>
+
+      <div class="gst-fssai">
+        <span>GST NO. 27AARPV49651Z7</span>
+        <span>FSSAI : 21526022003603</span>
+      </div>
+
+      <div class="banner">DELIVERY&nbsp;&nbsp;ORDER</div>
+
+      <div class="info-section">
+        <div class="info-col left">
+          <div class="info-line"><span class="label">PARTY NAME :</span><span class="fill"></span></div>
+          <div class="info-line"><span class="label">ADDRESS :</span><span class="fill"></span></div>
+          <div class="info-line"><span class="label">GST NO.</span><span class="fill"></span></div>
+          <div class="info-line"><span class="label">FSSAI NO.</span><span class="fill"></span></div>
+        </div>
+        <div class="info-col right">
+          <div class="info-line"><span class="label">ORDER NO.</span><span class="fill"></span></div>
+          <div class="info-line"><span class="label">DATE :</span><span class="fill"></span></div>
+          <div class="info-line"><span class="label">SALESMAN :</span><span class="fill"></span></div>
+        </div>
+      </div>
+
+      <table class="items">
+        <thead>
+          <tr>
+            <th class="sr">SR.</th>
+            <th class="desc">DESCRIPTION</th>
+            <th class="rate">RATE</th>
+            <th class="qty">QTY</th>
+            <th class="amount">AMOUNT</th>
+          </tr>
+        </thead>
+        <tbody id="itemRows"></tbody>
+      </table>
+
+      <div class="footer">
+        <div class="terms">
+          <div class="jurisdiction">SUBJECT TO ULHASNAGAR JURISDICTION</div>
+          <div class="cert">*I/We hereby certify that the foods/food mentioned in this invoice is/are warranted to be of the nature and quality which it/these purport/purports to be. Certited that the particulars given above are true and correct&hellip; E. &amp; O.E.</div>
+        </div>
+        <div class="totals">
+          <table>
+            <tr class="tax"><td class="label">TAX AMOUNT :</td><td class="value"></td></tr>
+            <tr><td class="label">ADD :</td><td class="value"></td></tr>
+            <tr><td class="label">CGST :</td><td class="value"></td></tr>
+            <tr><td class="label">SGST :</td><td class="value"></td></tr>
+            <tr class="total"><td class="label">TOTAL AMOUNT :</td><td class="value"></td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="signature">
+        <div>For Guru Kripa Trading</div>
+        <div class="auth">Authorised Signatory</div>
+      </div>
+
+      <div class="blue-block"></div>
+    </div>
+  </div>
+
+  <script>
+    const tbody = document.getElementById('itemRows');
+    for (let i = 1; i <= 15; i++) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="sr">${i}</td><td class="desc"></td><td class="rate"></td><td class="qty"></td><td class="amount"></td>`;
+      tbody.appendChild(tr);
+    }
+    const blankRow = document.createElement('tr');
+    blankRow.innerHTML = `<td class="sr"></td><td class="desc"></td><td class="rate"></td><td class="qty"></td><td class="amount"></td>`;
+    tbody.appendChild(blankRow);
+  </script>
+</body>
+</html>
