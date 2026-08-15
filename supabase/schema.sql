@@ -57,8 +57,6 @@ create table public.delivery_orders (
   cgst_amount numeric(12, 2) not null default 0,
   sgst_amount numeric(12, 2) not null default 0,
   total_amount numeric(12, 2) not null default 0,
-  cash_amount numeric(12, 2) not null default 0,
-  gpay_amount numeric(12, 2) not null default 0,
   status public.order_status not null default 'draft',
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
