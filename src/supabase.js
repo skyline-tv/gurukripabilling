@@ -21,6 +21,7 @@ export const database = {
   addProduct: (product) => request('products', { method: 'POST', body: product, prefer: 'return=representation' }),
   addCustomer: (customer) => request('customers', { method: 'POST', body: customer, prefer: 'return=representation' }),
   updateProduct: (id, product) => request(`products?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: product, prefer: 'return=representation' }),
+  deleteProduct: (id) => request(`products?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }),
   addMovement: (movement) => request('inventory_movements', { method: 'POST', body: movement, prefer: 'return=representation' }),
   createOrder: async ({ order, items }) => {
     const [created] = await request('delivery_orders', { method: 'POST', body: order, prefer: 'return=representation' });
