@@ -15,9 +15,26 @@ function Dashboard({ user, onSignOut }) {
   useEffect(() => { refresh(); const timer = window.setInterval(() => refresh(true), 15000); const focus = () => refresh(true); window.addEventListener('focus', focus); return () => { window.clearInterval(timer); window.removeEventListener('focus', focus); }; }, [refresh]);
   const lowStock = products.filter((p) => p.stock <= p.minimum).length;
   const pages = { Home: <Home products={products} orders={orders} lowStock={lowStock} go={setPage}/>, Products: <Products products={products} refresh={refresh} flash={flash}/>, Inventory: <Inventory products={products} refresh={refresh} flash={flash} user={user}/>, Customers: <Customers customers={customers} refresh={refresh} flash={flash}/>, Reports: <Reports orders={orders} flash={flash}/>, 'Delivery Orders': <Orders products={products} customers={customers} orders={orders} refresh={refresh} flash={flash} user={user}/> };
-  return <div className="app"><aside><div className="brand"><span>G</span><div><strong>Gurukripa</strong><small>TRADING</small></div></div><nav>{['Home', 'Delivery Orders', 'Products', 'Inventory', 'Customers', 'Reports'].map((item) => <button className={page === item ? 'active' : ''} onClick={() => setPage(item)} key={item}><i>{icons[item]}</i>{item}</button>)}</nav><div className="business"><b>GURUKRIPA TRADING</b><small>Ulhasnagar-5</small></div></aside><main><header><div className="crumb">Business Desk <span>/</span> {page}</div><button className="user" title="Sign out" onClick={onSignOut}>{user?.email?.slice(0, 2).toUpperCase() || 'AS'}</button></header><section className="content">{error && <p className="sync-error">Supabase sync error: {error}</p>}{loading ? <p>Loading data from Supabase…</p> : pages[page]}</section></main>{toast && <div className="toast">✓ {toast}</div>}</div>;
+  return <div className="app"><aside><div className="brand"><span>G</span><div><strong>Gurukripa</strong><small>TRADING</small></div></div><nav>{['Home', 'Delivery Orders', 'Products', 'Inventory', 'Customers', 'Reports'].map((item) => <button className={page === item ? 'active' : ''} onClick={() => setPage(item)} key={item}><i>{icons[item]}</i>{item}</button>)}</nav><button className="logout" type="button" onClick={onSignOut}>↪ Log out</button><div className="business"><b>GURUKRIPA TRADING</b><small>Ulhasnagar-5</small></div></aside><main><header><div className="crumb">Business Desk <span>/</span> {page}</div><button className="user" type="button" title="Log out" aria-label="Log out" onClick={onSignOut}>{user?.email?.slice(0, 2).toUpperCase() || 'AS'}</button></header><section className="content">{error && <p className="sync-error">Supabase sync error: {error}</p>}{loading ? <p>Loading data from Supabase…</p> : pages[page]}</section></main>{toast && <div className="toast">✓ {toast}</div>}</div>;
 }
-function App() { const [session, setSession] = useState(() => authClient.getSession()); return session ? <Dashboard user={session.user} onSignOut={() => { authClient.signOut(); setSession(null); }}/> : <LoginPage onLogin={setSession}/>; }
+function App() {
+  const [session, setSession] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const restoreSession = async () => {
+      try { const restored = await authClient.getSession(); if (active) setSession(restored); }
+      finally { if (active) setCheckingSession(false); }
+    };
+    restoreSession();
+    const { data: { subscription } } = authClient.onAuthStateChange((nextSession) => { if (active) setSession(nextSession); });
+    return () => { active = false; subscription.unsubscribe(); };
+  }, []);
+
+  if (checkingSession) return <main className="login-page"><p>Restoring your session…</p></main>;
+  return session ? <Dashboard user={session.user} onSignOut={async () => { await authClient.signOut(); setSession(null); }}/> : <LoginPage onLogin={setSession}/>;
+}
 const icons = { Home: '▦', 'Delivery Orders': '▱', Products: '□', Inventory: '◫', Customers: '♙', Reports: '▤' };
 function Home({ products, orders, lowStock, go }) { return <><div className="intro"><div><p>GURUKRIPA TRADING</p><h1>Good morning, <span>Admin.</span></h1><small>All records are synced from Supabase.</small></div><button className="primary" onClick={() => go('Delivery Orders')}>＋ New Delivery Order</button></div><div className="metrics"><Metric name="Delivery Orders" value={String(orders.length).padStart(2, '0')} hint="Synced from Supabase"/><Metric name="Products" value={String(products.length).padStart(2, '0')} hint="Active catalog items"/><Metric name="Low Stock" value={String(lowStock).padStart(2, '0')} hint="● Needs attention" alert/></div><section className="card welcome-card"><h2>Quick actions</h2><p>Create delivery orders, keep stock up to date, and manage your customer directory.</p><div><button onClick={() => go('Delivery Orders')}>Create delivery order →</button><button onClick={() => go('Products')}>Manage products →</button><button onClick={() => go('Customers')}>View customers →</button></div></section></> }
 function Metric({ name, value, hint, alert }) { return <article className="card metric"><small>{name}</small><strong>{value}</strong><p className={alert ? 'alert' : ''}>{hint}</p></article> }

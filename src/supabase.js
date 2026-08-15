@@ -1,16 +1,64 @@
+import { createClient } from '@supabase/supabase-js';
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '');
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const storageKey = 'gurukripa-auth-session';
 
-const getSession = () => { try { return JSON.parse(sessionStorage.getItem(storageKey) || 'null'); } catch { return null; } };
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-const request = async (path, { method = 'GET', body, prefer } = {}) => {
-  const session = getSession();
-  if (!isSupabaseConfigured) throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
-  if (!session?.accessToken) throw new Error('Your session has expired. Please sign in again.');
-  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, { method, headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${session.accessToken}`, 'Content-Type': 'application/json', ...(prefer ? { Prefer: prefer } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
-  if (!response.ok) { const problem = await response.json().catch(() => ({})); throw new Error(problem.message || problem.hint || 'Supabase request failed.'); }
+// The client stores the complete session (including its refresh token) in
+// localStorage, restores it on reopen, and refreshes access tokens in the background.
+const supabase = isSupabaseConfigured ? createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+}) : null;
+
+let refreshInFlight = null;
+const configurationError = () => new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
+const requireClient = () => { if (!supabase) throw configurationError(); return supabase; };
+const sessionExpiredError = () => new Error('Your session has expired. Please sign in again.');
+const signOutExpiredSession = async () => { if (supabase) await supabase.auth.signOut({ scope: 'local' }); throw sessionExpiredError(); };
+
+const refreshSession = async () => {
+  if (!refreshInFlight) {
+    refreshInFlight = requireClient().auth.refreshSession().then(({ data, error }) => error || !data.session?.access_token ? null : data.session).finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+};
+
+// Obtain a current session immediately before every database request. This makes
+// foreground sync safe after a tab has been idle or the app has been reopened.
+const getValidSession = async ({ forceRefresh = false } = {}) => {
+  const { data, error } = await requireClient().auth.getSession();
+  let session = data.session;
+  const expiresSoon = !session?.expires_at || session.expires_at * 1000 <= Date.now() + 60_000;
+  if (error || !session || forceRefresh || expiresSoon) session = await refreshSession();
+  if (!session?.access_token) await signOutExpiredSession();
+  return session;
+};
+
+const readProblem = async (response) => response.json().catch(() => ({}));
+const isExpiredJwtProblem = (response, problem) => response.status === 401 && /jwt.*expired|token.*expired/i.test(`${problem.message || ''} ${problem.hint || ''} ${problem.error || ''}`);
+const sendRequest = (path, { method = 'GET', body, prefer }, accessToken) => fetch(`${supabaseUrl}/rest/v1/${path}`, {
+  method,
+  headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', ...(prefer ? { Prefer: prefer } : {}) },
+  ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+});
+
+const request = async (path, options = {}) => {
+  let session = await getValidSession();
+  let response = await sendRequest(path, options, session.access_token);
+  let problem = response.ok ? null : await readProblem(response);
+
+  // A request may race expiry. Retry only once and only with a newly refreshed JWT.
+  if (isExpiredJwtProblem(response, problem)) {
+    const refreshedSession = await getValidSession({ forceRefresh: true });
+    if (refreshedSession.access_token === session.access_token) await signOutExpiredSession();
+    response = await sendRequest(path, options, refreshedSession.access_token);
+    problem = response.ok ? null : await readProblem(response);
+  }
+  if (!response.ok) {
+    if (isExpiredJwtProblem(response, problem)) await signOutExpiredSession();
+    throw new Error(problem.message || problem.hint || 'Supabase request failed.');
+  }
   return response.status === 204 ? null : response.json();
 };
 
@@ -36,14 +84,15 @@ export const database = {
 };
 
 export const authClient = {
-  getSession,
+  async getSession() { if (!supabase) return null; const { data } = await supabase.auth.getSession(); return data.session; },
   async signIn(email, password) {
-    if (!isSupabaseConfigured) throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local.');
-    const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: supabaseAnonKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error_description || payload.msg || 'Unable to sign in.');
-    const session = { accessToken: payload.access_token, user: payload.user };
-    sessionStorage.setItem(storageKey, JSON.stringify(session)); return session;
+    const { data, error } = await requireClient().auth.signInWithPassword({ email, password });
+    if (error || !data.session) throw new Error(error?.message || 'Unable to sign in.');
+    return data.session;
   },
-  signOut() { sessionStorage.removeItem(storageKey); },
+  async signOut() { if (supabase) await supabase.auth.signOut({ scope: 'local' }); },
+  onAuthStateChange(callback) {
+    if (!supabase) return { data: { subscription: { unsubscribe() {} } } };
+    return supabase.auth.onAuthStateChange((_event, session) => callback(session));
+  },
 };
