@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { authClient, database } from './supabase.js';
+import DashboardPage from './Dashboard.jsx';
+import DeliveryOrdersPage from './DeliveryOrders.jsx';
 import LoginPage from './LoginPage.jsx';
 
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -40,7 +42,7 @@ function Dashboard({ user, onSignOut }) {
   const lowStock = products.filter((p) => p.stock <= p.minimum).length;
   const navItems = role === 'staff' ? ['Home', 'Delivery Orders'] : ['Home', 'Delivery Orders', 'Products', 'Inventory', 'Customers', 'Reports'];
   useEffect(() => { if (!navItems.includes(page)) setPage('Home'); }, [navItems, page]);
-  const pages = { Home: <Home products={products} orders={orders} lowStock={lowStock} go={setPage} role={role}/>, Products: <Products products={products} refresh={refresh} flash={flash}/>, Inventory: <Inventory products={products} refresh={refresh} flash={flash} user={user}/>, Customers: <Customers customers={customers} refresh={refresh} flash={flash}/>, Reports: <Reports orders={orders} flash={flash}/>, 'Delivery Orders': <Orders products={products} customers={customers} orders={orders} refresh={refresh} flash={flash} user={user} role={role}/> };
+  const pages = { Home: <DashboardPage products={products} orders={orders} lowStock={lowStock} go={setPage} role={role}/>, Products: <Products products={products} refresh={refresh} flash={flash}/>, Inventory: <Inventory products={products} refresh={refresh} flash={flash} user={user}/>, Customers: <Customers customers={customers} refresh={refresh} flash={flash}/>, Reports: <Reports orders={orders} flash={flash}/>, 'Delivery Orders': <DeliveryOrdersPage><Orders products={products} customers={customers} orders={orders} refresh={refresh} flash={flash} user={user} role={role}/></DeliveryOrdersPage> };
   return <div className="app"><aside><div className="brand"><span>G</span><div><strong>Gurukripa</strong><small>TRADING</small></div></div><nav>{navItems.map((item) => <button className={page === item ? 'active' : ''} onClick={() => setPage(item)} key={item}><i>{icons[item]}</i>{item}</button>)}</nav><button className="logout" type="button" onClick={onSignOut}>↪ Log out</button><div className="business"><b>GURUKRIPA TRADING</b><small>Ulhasnagar-5</small></div></aside><main><header><div className="crumb">Business Desk <span>/</span> {page}</div><button className="user" type="button" title="Log out" aria-label="Log out" onClick={onSignOut}>{user?.email?.slice(0, 2).toUpperCase() || 'AS'}</button></header><section className="content">{error && <p className="sync-error">Supabase sync error: {error}</p>}{loading ? <p>Loading data from Supabase…</p> : pages[page]}</section></main>{toast && <div className="toast">✓ {toast}</div>}</div>;
 }
 function App() {
