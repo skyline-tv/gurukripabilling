@@ -3,6 +3,8 @@ import QRCode from 'qrcode';
 import { authClient, database } from './supabase.js';
 import LoginPage from './LoginPage.jsx';
 
+// Local workspace sync marker for git push readiness.
+
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 const toProduct = (p) => ({ id: p.id, name: p.name, sku: p.sku, category: p.category, rate: Number(p.selling_rate), mrp: Number(p.mrp), stock: Number(p.current_stock), minimum: Number(p.minimum_stock) });
 const toCustomer = (c) => ({ id: c.id, name: c.name, contact: c.contact_person, mobile: c.mobile, city: c.city, address: c.address });
@@ -11,6 +13,7 @@ const getUserRole = (user) => {
   const role = user?.user_metadata?.role || user?.user_metadata?.user_role || user?.app_metadata?.role || user?.app_metadata?.user_role;
   return role === 'admin' ? 'admin' : 'staff';
 };
+
 
 function Dashboard({ user, onSignOut }) {
   const [page, setPage] = useState('Home'); const [products, setProducts] = useState([]); const [customers, setCustomers] = useState([]); const [orders, setOrders] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [toast, setToast] = useState(''); const [role, setRole] = useState(() => getUserRole(user));
