@@ -417,3 +417,67 @@ button {
     font-size: 16px;
   }
 }
+
+/* Login screen polish */
+.login-brand::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 45%),
+    radial-gradient(circle at 12% 82%, rgba(227, 173, 69, 0.2), transparent 19rem);
+  pointer-events: none;
+}
+
+.login-brand > * {
+  position: relative;
+  z-index: 1;
+}
+
+.login-panel {
+  background: linear-gradient(145deg, #fff, #f6f9f7);
+}
+
+.login-card {
+  padding: clamp(24px, 4vw, 38px);
+  border: 1px solid #e0e9e3;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 20px 52px rgba(17, 57, 38, 0.1);
+}
+
+.login-logo {
+  margin-bottom: 34px;
+}
+
+.login-card h2 {
+  letter-spacing: -0.5px;
+}
+
+.login-sub {
+  line-height: 1.6;
+}
+
+.login-card input {
+  min-height: 46px;
+}
+
+.login-submit:focus-visible {
+  outline: 3px solid rgba(17, 114, 75, 0.2);
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .login-panel {
+    background:
+      radial-gradient(circle at 100% 0, rgba(227, 173, 69, 0.11), transparent 18rem),
+      #f7faf8;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-card {
+    padding: 24px 20px;
+    border-radius: 14px;
+  }
+}
