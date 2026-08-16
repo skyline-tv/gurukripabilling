@@ -114,11 +114,17 @@ function Reports({ orders, flash }) {
     window.addEventListener('afterprint', clearPrintMode, { once: true });
     window.print();
   };
+  const printPaymentReport = () => {
+    document.body.classList.add('printing-payment-report');
+    const clearPrintMode = () => document.body.classList.remove('printing-payment-report');
+    window.addEventListener('afterprint', clearPrintMode, { once: true });
+    window.print();
+  };
   const totalAmount = reportOrders.reduce((sum, order) => sum + order.amount, 0);
   const totalQuantity = summaryItems.reduce((sum, item) => sum + item.quantity, 0);
   const quantity = (value) => Number(value).toLocaleString('en-IN', { maximumFractionDigits: 3 });
   return <><Title title="Order Payment Report" subtitle="Payments recorded against delivery orders"/>
-    <section className="card payment-report-controls"><label>From<input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}/></label><label>To<input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}/></label><button type="button" className="primary" onClick={generate}>Generate Report</button><button type="button" className="secondary" onClick={() => window.print()} disabled={!reportOrders.length}>Print Report</button></section>
+    <section className="card payment-report-controls"><label>From<input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}/></label><label>To<input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}/></label><button type="button" className="primary" onClick={generate}>Generate Report</button><button type="button" className="secondary" onClick={printPaymentReport} disabled={!reportOrders.length}>Print Report</button></section>
     <section className="payment-report" aria-label="Order Payment Report"><div className="payment-report-heading"><b>GURUKRIPA TRADING</b><h2>ORDER PAYMENT REPORT</h2><p>{dateLabel(fromDate, toDate)}</p></div><div className="card table-wrap"><table><thead><tr><th>ORDER NUMBER</th><th>CUSTOMER NAME</th><th className="number">AMOUNT</th><th className="number">CASH</th><th className="number">G-PAY</th></tr></thead><tbody>{reportOrders.map((order) => <tr key={order.id}><td><b>{order.number}</b></td><td>{order.customer}</td><td className="number">{money(order.amount)}</td><td className="number"></td><td className="number"></td></tr>)}{!reportOrders.length && <tr><td colSpan="5" className="report-empty">Generate a report to view orders for the selected period.</td></tr>}</tbody>{reportOrders.length > 0 && <tfoot><tr><th colSpan="2">TOTAL</th><th className="number">{money(totalAmount)}</th><th className="number"></th><th className="number"></th></tr></tfoot>}</table></div></section>
     <section className="delivery-summary-section"><Title title="Delivery Summary" subtitle="Consolidated item quantities required for delivery"/>
       <section className="card delivery-summary-controls"><label>From<input type="date" value={summaryFromDate} onChange={(e) => setSummaryFromDate(e.target.value)}/></label><label>To<input type="date" value={summaryToDate} onChange={(e) => setSummaryToDate(e.target.value)}/></label><button type="button" className="primary" onClick={generateSummary}>Generate Report</button><button type="button" className="secondary" onClick={printSummary} disabled={!summaryItems.length}>Print Report</button></section>
