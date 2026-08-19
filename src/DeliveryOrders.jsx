@@ -1,8 +1,32 @@
-import { useState } from 'react';
+import { Children, cloneElement, useEffect, useState } from 'react';
 
-function DeliveryOrders({ children }) {
-  const [billingOpen, setBillingOpen] = useState(false);
-  return <div className={`delivery-orders-screen${billingOpen ? ' billing-open' : ''}`}><div className="delivery-orders-toolbar"><div><p className="eyebrow">ORDER MANAGEMENT</p><span>Create, review, and print delivery orders from one place.</span></div><button className="primary" type="button" onClick={() => setBillingOpen(true)}>＋ New delivery order</button></div>{billingOpen && <button className="billing-backdrop" type="button" aria-label="Close new delivery order" onClick={() => setBillingOpen(false)}/>} {billingOpen && <button className="billing-close" type="button" onClick={() => setBillingOpen(false)}>Close billing</button>}{children}</div>;
+function DeliveryOrders({ children, startNew = 0 }) {
+  const [formOpen, setFormOpen] = useState(false);
+
+  useEffect(() => {
+    if (startNew) setFormOpen(true);
+  }, [startNew]);
+
+  return (
+    <div className={`delivery-orders-screen${formOpen ? ' order-page-open' : ''}`}>
+      <div className="delivery-orders-toolbar">
+        <div>
+          <p className="eyebrow">{formOpen ? 'NEW ORDER' : 'DELIVERY ORDERS'}</p>
+          <span>
+            {formOpen
+              ? 'Select party, add products, enter quantity, then confirm.'
+              : 'Search the register or create a new order.'}
+          </span>
+        </div>
+        {formOpen ? (
+          <button className="secondary" type="button" onClick={() => setFormOpen(false)}>Back to register</button>
+        ) : (
+          <button className="primary" type="button" onClick={() => setFormOpen(true)}>New Delivery Order</button>
+        )}
+      </div>
+      {cloneElement(Children.only(children), { onFormClose: () => setFormOpen(false), formOpen })}
+    </div>
+  );
 }
 
 export default DeliveryOrders;

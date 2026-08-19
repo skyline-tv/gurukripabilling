@@ -5,8 +5,6 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-// The client stores the complete session (including its refresh token) in
-// localStorage, restores it on reopen, and refreshes access tokens in the background.
 const supabase = isSupabaseConfigured ? createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 }) : null;
@@ -24,8 +22,6 @@ const refreshSession = async () => {
   return refreshInFlight;
 };
 
-// Obtain a current session immediately before every database request. This makes
-// foreground sync safe after a tab has been idle or the app has been reopened.
 const getValidSession = async ({ forceRefresh = false } = {}) => {
   const { data, error } = await requireClient().auth.getSession();
   let session = data.session;
@@ -48,7 +44,6 @@ const request = async (path, options = {}) => {
   let response = await sendRequest(path, options, session.access_token);
   let problem = response.ok ? null : await readProblem(response);
 
-  // A request may race expiry. Retry only once and only with a newly refreshed JWT.
   if (isExpiredJwtProblem(response, problem)) {
     const refreshedSession = await getValidSession({ forceRefresh: true });
     if (refreshedSession.access_token === session.access_token) await signOutExpiredSession();
@@ -70,12 +65,14 @@ export const database = {
   },
   getProducts: () => request('products?select=*&order=name.asc'),
   getCustomers: () => request('customers?select=*&order=name.asc'),
-  getOrders: () => request('delivery_orders?select=*,customers(name,mobile,address,city),delivery_order_items(*)&order=created_at.desc'),
+  getOrders: () => request('delivery_orders?select=*,customers(name,mobile,address,city,gst_number,fssai_number,salesman_name),delivery_order_items(*)&order=created_at.desc'),
+  getInvoices: () => request('invoices?select=*,customers(name,mobile,address,city,gst_number,fssai_number,salesman_name),delivery_orders(order_number),invoice_items(*)&order=created_at.desc'),
   addProduct: (product) => request('products', { method: 'POST', body: product, prefer: 'return=representation' }),
   addCustomer: (customer) => request('customers', { method: 'POST', body: customer, prefer: 'return=representation' }),
   updateCustomer: (id, customer) => request(`customers?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: customer, prefer: 'return=representation' }),
   deleteCustomer: (id) => request(`customers?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }),
   updateOrderWithItems: (orderId, customerId, items) => request('rpc/update_delivery_order', { method: 'POST', body: { p_order_id: orderId, p_customer_id: customerId, p_items: items } }),
+  deleteOrder: (orderId) => request('rpc/delete_delivery_order', { method: 'POST', body: { p_order_id: orderId } }),
   updateProduct: (id, product) => request(`products?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: product, prefer: 'return=representation' }),
   deleteProduct: (id) => request(`products?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }),
   addMovement: (movement) => request('inventory_movements', { method: 'POST', body: movement, prefer: 'return=representation' }),
@@ -85,6 +82,12 @@ export const database = {
     await request('rpc/finalize_delivery_order', { method: 'POST', body: { p_order_id: created.id } });
     return created;
   },
+  createInvoice: async ({ invoice, items }) => {
+    const [created] = await request('invoices', { method: 'POST', body: invoice, prefer: 'return=representation' });
+    await request('invoice_items', { method: 'POST', body: items.map((item) => ({ ...item, invoice_id: created.id })), prefer: 'return=representation' });
+    return created;
+  },
+  deleteInvoice: (id) => request(`invoices?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
 export const authClient = {

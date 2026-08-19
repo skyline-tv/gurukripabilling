@@ -22,6 +22,8 @@ create table public.customers (
   address text,
   city text,
   gst_number text,
+  fssai_number text,
+  salesman_name text,
   opening_balance numeric(12, 2) not null default 0,
   outstanding_balance numeric(12, 2) not null default 0,
   status boolean not null default true,
@@ -203,3 +205,66 @@ begin
   update public.delivery_orders set customer_id = p_customer_id, taxable_amount = new_total, total_amount = new_total, status = 'delivered', updated_at = now() where id = p_order_id;
 end;
 $$;
+
+-- Restores stock, then removes the delivery order and its items.
+create or replace function public.delete_delivery_order(p_order_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  old_item record;
+begin
+  if not exists (select 1 from public.delivery_orders where id = p_order_id) then
+    raise exception 'Delivery order not found';
+  end if;
+
+  for old_item in select * from public.delivery_order_items where delivery_order_id = p_order_id loop
+    update public.products set current_stock = current_stock + old_item.quantity, updated_at = now() where id = old_item.product_id;
+  end loop;
+
+  delete from public.inventory_movements where reference_type = 'delivery_order' and reference_id = p_order_id;
+  delete from public.delivery_orders where id = p_order_id;
+end;
+$$;
+
+create table public.invoices (
+  id uuid primary key default gen_random_uuid(),
+  invoice_number text not null unique,
+  delivery_order_id uuid not null unique references public.delivery_orders(id),
+  customer_id uuid not null references public.customers(id),
+  invoice_date date not null default current_date,
+  salesman_name text,
+  taxable_amount numeric(12, 2) not null default 0,
+  gst_percent numeric(5, 2) not null default 5,
+  cgst_amount numeric(12, 2) not null default 0,
+  sgst_amount numeric(12, 2) not null default 0,
+  total_amount numeric(12, 2) not null default 0,
+  status text not null default 'issued',
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.invoice_items (
+  id uuid primary key default gen_random_uuid(),
+  invoice_id uuid not null references public.invoices(id) on delete cascade,
+  product_id uuid not null references public.products(id),
+  description text not null,
+  mrp numeric(12, 2) not null default 0,
+  rate numeric(12, 2) not null default 0,
+  quantity numeric(12, 3) not null check (quantity > 0),
+  amount numeric(12, 2) not null default 0,
+  gst_percent numeric(5, 2) not null default 5,
+  cgst_amount numeric(12, 2) not null default 0,
+  sgst_amount numeric(12, 2) not null default 0
+);
+
+create index invoices_customer_id_idx on public.invoices(customer_id);
+create index invoice_items_invoice_id_idx on public.invoice_items(invoice_id);
+
+alter table public.invoices enable row level security;
+alter table public.invoice_items enable row level security;
+
+create policy "Authenticated users can manage invoices" on public.invoices for all to authenticated using (true) with check (true);
+create policy "Authenticated users can manage invoice items" on public.invoice_items for all to authenticated using (true) with check (true);

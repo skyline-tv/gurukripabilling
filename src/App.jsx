@@ -1,25 +1,73 @@
-import { useCallback, useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { authClient, database } from './supabase.js';
+import { getUserRole, toCustomer, toInvoice, toOrder, toProduct } from './records.js';
 import DashboardPage from './Dashboard.jsx';
 import DeliveryOrdersPage from './DeliveryOrders.jsx';
+import DeliveryOrderWorkspace from './DeliveryOrderWorkspace.jsx';
+import Products from './Products.jsx';
+import Inventory from './Inventory.jsx';
+import Customers from './Customers.jsx';
+import Invoices from './Invoices.jsx';
+import Reports from './Reports.jsx';
 import LoginPage from './LoginPage.jsx';
+import Sidebar from './Sidebar.jsx';
 
-const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
-const toProduct = (p) => ({ id: p.id, name: p.name, sku: p.sku, category: p.category, rate: Number(p.selling_rate), mrp: Number(p.mrp), stock: Number(p.current_stock), minimum: Number(p.minimum_stock) });
-const toCustomer = (c) => ({ id: c.id, name: c.name, contact: c.contact_person, mobile: c.mobile, city: c.city, address: c.address });
-const toOrder = (o) => ({ id: o.id, number: o.order_number, customerId: o.customer_id, orderDate: o.order_date, customer: o.customers?.name || '—', customerAddress: o.customers?.address || [o.customers?.city, 'Maharashtra'].filter(Boolean).join(', '), customerMobile: o.customers?.mobile || '—', date: new Date(`${o.order_date}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), amount: Number(o.total_amount), salesman: o.salesman_name || '', status: o.status, items: (o.delivery_order_items || []).map((i) => ({ productId: i.product_id, product: i.description, rate: Number(i.rate), mrp: Number(i.mrp), quantity: Number(i.quantity), amount: Number(i.amount) })) });
-const getUserRole = (user) => {
-  const role = user?.user_metadata?.role || user?.user_metadata?.user_role || user?.app_metadata?.role || user?.app_metadata?.user_role;
-  return role === 'admin' ? 'admin' : 'staff';
-};
+function AppShell({ user, onSignOut }) {
+  const [page, setPage] = useState('Home');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [newOrderTick, setNewOrderTick] = useState(0);
+  const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState(null);
+  const [role, setRole] = useState(() => getUserRole(user));
 
+  const go = (nextPage, options) => {
+    setPage(nextPage);
+    setSidebarOpen(false);
+    if (options?.newOrder) setNewOrderTick((tick) => tick + 1);
+  };
 
-function Dashboard({ user, onSignOut }) {
-  const [page, setPage] = useState('Home'); const [products, setProducts] = useState([]); const [customers, setCustomers] = useState([]); const [orders, setOrders] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [toast, setToast] = useState(''); const [role, setRole] = useState(() => getUserRole(user));
-  const flash = (text) => { setToast(text); window.setTimeout(() => setToast(''), 2800); };
-  const refresh = useCallback(async (quiet = false) => { try { if (!quiet) setLoading(true); const [p, c, o] = await Promise.all([database.getProducts(), database.getCustomers(), database.getOrders()]); setProducts(p.map(toProduct)); setCustomers(c.map(toCustomer)); setOrders(o.map(toOrder)); setError(''); } catch (err) { setError(err.message); } finally { if (!quiet) setLoading(false); } }, []);
-  useEffect(() => { refresh(); const timer = window.setInterval(() => refresh(true), 15000); const focus = () => refresh(true); window.addEventListener('focus', focus); return () => { window.clearInterval(timer); window.removeEventListener('focus', focus); }; }, [refresh]);
+  const flash = (text, tone = 'success') => {
+    setToast({ text, tone });
+    window.setTimeout(() => setToast(null), 3200);
+  };
+
+  const refresh = useCallback(async (quiet = false) => {
+    try {
+      if (!quiet) setLoading(true);
+      const [productRows, customerRows, orderRows, invoiceRows] = await Promise.all([
+        database.getProducts(),
+        database.getCustomers(),
+        database.getOrders(),
+        database.getInvoices().catch(() => []),
+      ]);
+      setProducts(productRows.map(toProduct));
+      setCustomers(customerRows.map(toCustomer));
+      setOrders(orderRows.map(toOrder));
+      setInvoices(invoiceRows.map(toInvoice));
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      if (!quiet) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const timer = window.setInterval(() => refresh(true), 15000);
+    const onFocus = () => refresh(true);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [refresh]);
+
   useEffect(() => {
     let active = true;
     const resolveRole = async () => {
@@ -39,12 +87,61 @@ function Dashboard({ user, onSignOut }) {
     else setRole('staff');
     return () => { active = false; };
   }, [user]);
-  const lowStock = products.filter((p) => p.stock <= p.minimum).length;
-  const navItems = role === 'staff' ? ['Home', 'Delivery Orders'] : ['Home', 'Delivery Orders', 'Products', 'Inventory', 'Customers', 'Reports'];
-  useEffect(() => { if (!navItems.includes(page)) setPage('Home'); }, [navItems, page]);
-  const pages = { Home: <DashboardPage products={products} orders={orders} lowStock={lowStock} go={setPage} role={role}/>, Products: <Products products={products} refresh={refresh} flash={flash}/>, Inventory: <Inventory products={products} refresh={refresh} flash={flash} user={user}/>, Customers: <Customers customers={customers} refresh={refresh} flash={flash}/>, Reports: <Reports orders={orders} flash={flash}/>, 'Delivery Orders': <DeliveryOrdersPage><Orders products={products} customers={customers} orders={orders} refresh={refresh} flash={flash} user={user} role={role}/></DeliveryOrdersPage> };
-  return <div className="app"><aside><div className="brand"><span>G</span><div><strong>Gurukripa</strong><small>TRADING</small></div></div><nav>{navItems.map((item) => <button className={page === item ? 'active' : ''} onClick={() => setPage(item)} key={item}><i>{icons[item]}</i>{item}</button>)}</nav><button className="logout" type="button" onClick={onSignOut}>↪ Log out</button><div className="business"><b>GURUKRIPA TRADING</b><small>Ulhasnagar-5</small></div></aside><main><header><div className="crumb">Business Desk <span>/</span> {page}</div><button className="user" type="button" title="Log out" aria-label="Log out" onClick={onSignOut}>{user?.email?.slice(0, 2).toUpperCase() || 'AS'}</button></header><section className="content">{error && <p className="sync-error">Supabase sync error: {error}</p>}{loading ? <p>Loading data from Supabase…</p> : pages[page]}</section></main>{toast && <div className="toast">✓ {toast}</div>}</div>;
+
+  const lowStock = products.filter((product) => product.stock <= product.minimum).length;
+  const navItems = useMemo(
+    () => (role === 'staff' ? ['Home', 'Delivery Orders', 'Invoices'] : ['Home', 'Delivery Orders', 'Invoices', 'Products', 'Inventory', 'Customers', 'Reports']),
+    [role],
+  );
+
+  useEffect(() => {
+    if (!navItems.includes(page)) setPage('Home');
+  }, [navItems, page]);
+
+  const pages = {
+    Home: <DashboardPage products={products} orders={orders} lowStock={lowStock} go={go} role={role} />,
+    Products: <Products products={products} refresh={refresh} flash={flash} />,
+    Inventory: <Inventory products={products} refresh={refresh} flash={flash} user={user} />,
+    Customers: <Customers customers={customers} refresh={refresh} flash={flash} />,
+    Reports: <Reports orders={orders} products={products} flash={flash} />,
+    Invoices: <Invoices invoices={invoices} refresh={refresh} flash={flash} />,
+    'Delivery Orders': (
+      <DeliveryOrdersPage startNew={newOrderTick}>
+        <DeliveryOrderWorkspace products={products} customers={customers} orders={orders} invoices={invoices} refresh={refresh} flash={flash} user={user} role={role} go={go} />
+      </DeliveryOrdersPage>
+    ),
+  };
+
+  const toastTone = toast?.tone === 'error' ? 'error' : toast?.tone === 'warning' ? 'warning' : 'success';
+
+  return (
+    <div className="app">
+      <Sidebar page={page} navItems={navItems} onNavigate={go} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="app-main">
+        <header className="app-header">
+          <button className="sidebar-toggle" type="button" aria-label="Open menu" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(true)}>
+            <span /><span /><span />
+          </button>
+          <div className="crumb">{page}</div>
+          <div className="header-user">
+            <span className="header-user-name">{user?.email || ''}</span>
+            <button className="logout-link" type="button" onClick={onSignOut}>Log out</button>
+          </div>
+        </header>
+        <section className="content">
+          {error && <p className="sync-error">Could not load data: {error}</p>}
+          {loading ? <div className="page-loading">Loading delivery orders and catalog…</div> : pages[page]}
+        </section>
+      </main>
+      {toast?.text && (
+        <div className={`toast toast-${toastTone}`}>
+          {toastTone === 'error' ? '✕' : toastTone === 'warning' ? '!' : '✓'} {toast.text}
+        </div>
+      )}
+    </div>
+  );
 }
+
 function App() {
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -52,75 +149,26 @@ function App() {
   useEffect(() => {
     let active = true;
     const restoreSession = async () => {
-      try { const restored = await authClient.getSession(); if (active) setSession(restored); }
-      finally { if (active) setCheckingSession(false); }
+      try {
+        const restored = await authClient.getSession();
+        if (active) setSession(restored);
+      } finally {
+        if (active) setCheckingSession(false);
+      }
     };
     restoreSession();
-    const { data: { subscription } } = authClient.onAuthStateChange((nextSession) => { if (active) setSession(nextSession); });
-    return () => { active = false; subscription.unsubscribe(); };
+    const { data: { subscription } } = authClient.onAuthStateChange((nextSession) => {
+      if (active) setSession(nextSession);
+    });
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  if (checkingSession) return <main className="login-page"><p>Restoring your session…</p></main>;
-  return session ? <Dashboard user={session.user} onSignOut={async () => { await authClient.signOut(); setSession(null); }}/> : <LoginPage onLogin={setSession}/>;
+  if (checkingSession) return <main className="login-page"><p className="page-loading">Restoring your session…</p></main>;
+  if (!session) return <LoginPage onLogin={setSession} />;
+  return <AppShell user={session.user} onSignOut={async () => { await authClient.signOut(); setSession(null); }} />;
 }
-const icons = { Home: '▦', 'Delivery Orders': '▱', Products: '□', Inventory: '◫', Customers: '♙', Reports: '▤' };
-function Home({ products, orders, lowStock, go, role = 'admin' }) {
-  const totalOrderAmount = orders.reduce((sum, order) => sum + Number(order.amount || 0), 0);
-  const staffView = role === 'staff';
-  return <><div className="intro"><div><p>GURUKRIPA TRADING</p><h1>Good morning, <span>{staffView ? 'Staff.' : 'Admin.'}</span></h1><small>{staffView ? 'Delivery desk overview.' : 'All records are synced from Supabase.'}</small></div><button className="primary" onClick={() => go('Delivery Orders')}>＋ New Delivery Order</button></div><div className="metrics">{staffView ? <><Metric name="Orders Taken" value={String(orders.length).padStart(2, '0')} hint="Delivery orders recorded"/><Metric name="Total Amount" value={money(totalOrderAmount)} hint="Across all synced orders"/></> : <><Metric name="Delivery Orders" value={String(orders.length).padStart(2, '0')} hint="Synced from Supabase"/><Metric name="Products" value={String(products.length).padStart(2, '0')} hint="Active catalog items"/><Metric name="Low Stock" value={String(lowStock).padStart(2, '0')} hint="● Needs attention" alert/></>}</div>{staffView ? <section className="card welcome-card"><h2>Quick actions</h2><p>Review and create delivery orders for the day.</p><div><button onClick={() => go('Delivery Orders')}>Create delivery order →</button></div></section> : <section className="card welcome-card"><h2>Quick actions</h2><p>Create delivery orders, keep stock up to date, and manage your customer directory.</p><div><button onClick={() => go('Delivery Orders')}>Create delivery order →</button><button onClick={() => go('Products')}>Manage products →</button><button onClick={() => go('Customers')}>View customers →</button></div></section>}</> }
-function Metric({ name, value, hint, alert }) { return <article className="card metric"><small>{name}</small><strong>{value}</strong><p className={alert ? 'alert' : ''}>{hint}</p></article> }
-function Title({ title, subtitle, action, onAction }) { return <div className="page-title"><div><h1>{title}</h1><p>{subtitle}</p></div>{action && <button className="primary" onClick={onAction}>{action}</button>}</div> }
-function Input({ label, type = 'text', value, onChange }) { return <label>{label}<input type={type} value={value} onChange={(e) => onChange(e.target.value)}/></label> }
-function ProductTable({ products, onEdit, onDelete, saving }) { const actions = Boolean(onEdit || onDelete); return <div className="card table-wrap"><table><thead><tr><th>PRODUCT</th><th>SKU</th><th>CATEGORY</th><th>SELLING RATE</th><th>MRP</th><th>CURRENT STOCK</th><th>STATUS</th>{actions && <th>ACTIONS</th>}</tr></thead><tbody>{products.map((p) => <tr key={p.id}><td><b>{p.name}</b></td><td>{p.sku}</td><td>{p.category || '—'}</td><td>{money(p.rate)}</td><td>{money(p.mrp)}</td><td><b>{p.stock} units</b></td><td><mark className={p.stock <= p.minimum ? 'low' : 'available'}>{p.stock <= p.minimum ? 'Low stock' : 'Available'}</mark></td>{actions && <td><div className="row-actions"><button type="button" onClick={() => onEdit?.(p)} disabled={saving}>Edit</button><button type="button" className="danger" onClick={() => onDelete?.(p)} disabled={saving}>Delete</button></div></td>}</tr>)}{!products.length && <tr><td colSpan={actions ? '8' : '7'}>No products in Supabase yet.</td></tr>}</tbody></table></div> }
-function Products({ products, refresh, flash }) { const emptyForm = () => ({ name: '', sku: '', category: '', rate: '', mrp: '', stock: '', minimum: '' }); const [editing, setEditing] = useState(null); const [formOpen, setFormOpen] = useState(false); const [saving, setSaving] = useState(false); const [form, setForm] = useState(emptyForm); const openAdd = () => { setEditing(null); setForm(emptyForm()); setFormOpen(true); }; const closeForm = () => { setEditing(null); setForm(emptyForm()); setFormOpen(false); }; const openEdit = (product) => { setEditing(product); setForm({ name: product.name, sku: product.sku, category: product.category || '', rate: product.rate, mrp: product.mrp, stock: product.stock, minimum: product.minimum }); setFormOpen(true); }; const save = async (e) => { e.preventDefault(); if (!form.name || !form.sku) return flash('Product name and SKU are required.'); const product = { name: form.name, sku: form.sku, category: form.category || null, selling_rate: +form.rate || 0, mrp: +form.mrp || 0, current_stock: +form.stock || 0, minimum_stock: +form.minimum || 0, updated_at: new Date().toISOString() }; const isEditing = Boolean(editing); setSaving(true); try { if (editing) await database.updateProduct(editing.id, product); else await database.addProduct(product); await refresh(true); closeForm(); flash(isEditing ? 'Product updated.' : 'Product saved to Supabase.'); } catch (e) { flash(e.message); } finally { setSaving(false); } }; const remove = async (product) => { if (!window.confirm(`Delete ${product.name}? This cannot be undone.`)) return; setSaving(true); try { await database.deleteProduct(product.id); await refresh(true); if (editing?.id === product.id) closeForm(); flash('Product deleted.'); } catch (e) { flash(e.message); } finally { setSaving(false); } }; return <><Title title="Products" subtitle="Manage your Supabase product catalog" action="＋ Add product" onAction={openAdd}/>{formOpen && <form className="entry-form" onSubmit={save}><Input label="Product name" value={form.name} onChange={(v) => setForm({ ...form, name: v })}/><Input label="SKU / code" value={form.sku} onChange={(v) => setForm({ ...form, sku: v })}/><Input label="Category" value={form.category} onChange={(v) => setForm({ ...form, category: v })}/><Input label="Selling rate" type="number" value={form.rate} onChange={(v) => setForm({ ...form, rate: v })}/><Input label="MRP" type="number" value={form.mrp} onChange={(v) => setForm({ ...form, mrp: v })}/><Input label={editing ? 'Current stock' : 'Opening stock'} type="number" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })}/><Input label="Minimum stock" type="number" value={form.minimum} onChange={(v) => setForm({ ...form, minimum: v })}/><div className="form-actions"><button className="primary" disabled={saving}>{saving ? 'Saving…' : editing ? 'Update product' : 'Save product'}</button><button type="button" className="secondary" onClick={closeForm} disabled={saving}>Cancel</button></div></form>}<ProductTable products={products} onEdit={openEdit} onDelete={remove} saving={saving}/></> }
-function Customers({ customers, refresh, flash }) { const emptyForm = () => ({ name: '', contact: '', mobile: '', city: '' }); const [editing, setEditing] = useState(null); const [formOpen, setFormOpen] = useState(false); const [saving, setSaving] = useState(false); const [form, setForm] = useState(emptyForm); const openAdd = () => { setEditing(null); setForm(emptyForm()); setFormOpen(true); }; const closeForm = () => { setEditing(null); setForm(emptyForm()); setFormOpen(false); }; const openEdit = (customer) => { setEditing(customer); setForm({ name: customer.name, contact: customer.contact || '', mobile: customer.mobile || '', city: customer.city || '' }); setFormOpen(true); }; const save = async (e) => { e.preventDefault(); if (!form.name) return flash('Customer name is required.'); const customer = { name: form.name, contact_person: form.contact || null, mobile: form.mobile || null, city: form.city || null, updated_at: new Date().toISOString() }; const isEditing = Boolean(editing); setSaving(true); try { if (editing) await database.updateCustomer(editing.id, customer); else await database.addCustomer(customer); await refresh(true); closeForm(); flash(isEditing ? 'Customer updated.' : 'Customer saved to Supabase.'); } catch (e) { flash(e.message); } finally { setSaving(false); } }; const remove = async (customer) => { if (!window.confirm(`Delete ${customer.name}? This cannot be undone.`)) return; setSaving(true); try { await database.deleteCustomer(customer.id); await refresh(true); if (editing?.id === customer.id) closeForm(); flash('Customer deleted.'); } catch (e) { flash(e.message); } finally { setSaving(false); } }; return <><Title title="Customers" subtitle="Your Supabase customer directory" action="＋ Add customer" onAction={openAdd}/>{formOpen && <form className="entry-form four" onSubmit={save}><Input label="Party name" value={form.name} onChange={(v) => setForm({ ...form, name: v })}/><Input label="Contact person" value={form.contact} onChange={(v) => setForm({ ...form, contact: v })}/><Input label="Mobile number" value={form.mobile} onChange={(v) => setForm({ ...form, mobile: v })}/><Input label="City" value={form.city} onChange={(v) => setForm({ ...form, city: v })}/><div className="form-actions"><button className="primary" disabled={saving}>{saving ? 'Saving…' : editing ? 'Update customer' : 'Save customer'}</button><button type="button" className="secondary" onClick={closeForm} disabled={saving}>Cancel</button></div></form>}<div className="card table-wrap"><table><thead><tr><th>PARTY NAME</th><th>CONTACT PERSON</th><th>MOBILE</th><th>CITY</th><th>ACTIONS</th></tr></thead><tbody>{customers.map((c) => <tr key={c.id}><td><b>{c.name}</b></td><td>{c.contact || '—'}</td><td>{c.mobile || '—'}</td><td>{c.city || '—'}</td><td><div className="row-actions"><button type="button" onClick={() => openEdit(c)} disabled={saving}>Edit</button><button type="button" className="danger" onClick={() => remove(c)} disabled={saving}>Delete</button></div></td></tr>)}{!customers.length && <tr><td colSpan="5">No customers in Supabase yet.</td></tr>}</tbody></table></div></> }
-function Inventory({ products, refresh, flash, user }) { const [productId, setProductId] = useState(''); const [quantity, setQuantity] = useState(''); const [saving, setSaving] = useState(false); useEffect(() => { if (!products.some((p) => p.id === productId)) setProductId(products[0]?.id || ''); }, [products, productId]); const stockIn = async () => { const product = products.find((p) => p.id === productId); const qty = +quantity; if (!product || qty <= 0) return; setSaving(true); try { await database.updateProduct(product.id, { current_stock: product.stock + qty, updated_at: new Date().toISOString() }); await database.addMovement({ product_id: product.id, movement_type: 'stock_in', quantity: qty, reference_type: 'manual', notes: 'Stock received', created_by: user.id }); await refresh(true); setQuantity(''); flash('Inventory saved to Supabase.'); } catch (e) { flash(e.message); } finally { setSaving(false); } }; return <><Title title="Inventory" subtitle="Stock updates are persisted in Supabase"/><div className="inventory-grid"><section className="card adjust"><h2>Add stock</h2><p>Every update creates an inventory movement record.</p><label>Product<select value={productId} onChange={(e) => setProductId(e.target.value)} disabled={!products.length}>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label>Quantity received<input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)}/></label><button className="primary" onClick={stockIn} disabled={saving || !products.length}>{saving ? 'Saving…' : 'Add to inventory'}</button></section><section className="card inventory-note"><b>Inventory rule</b><p>Confirmed delivery orders deduct stock automatically.</p></section></div><ProductTable products={products}/></> }
-function Orders({ products, customers, orders, refresh, flash, user, role = 'staff' }) { const blank = () => ({ productId: '', quantity: 1 }); const emptyCustomer = () => ({ name: '', mobile: '', city: '' }); const today = new Date().toISOString().slice(0, 10); const isAdmin = role === 'admin'; const defaultSalesman = (user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Staff').trim(); const [customerId, setCustomerId] = useState(''); const [salesmanName, setSalesmanName] = useState(isAdmin ? '' : defaultSalesman); const [lines, setLines] = useState([blank()]); const [saving, setSaving] = useState(false); const [fromDate, setFromDate] = useState(today); const [toDate, setToDate] = useState(today); const [printOrders, setPrintOrders] = useState([]); const [editingBill, setEditingBill] = useState(null); const [billCustomerId, setBillCustomerId] = useState(''); const [billLines, setBillLines] = useState([]); const [billSaving, setBillSaving] = useState(false); const [addingCustomer, setAddingCustomer] = useState(false); const [customerSaving, setCustomerSaving] = useState(false); const [customerForm, setCustomerForm] = useState(emptyCustomer); useEffect(() => { if (!customers.some((c) => c.id === customerId)) setCustomerId(customers[0]?.id || ''); setLines((old) => old.map((line) => products.some((p) => p.id === line.productId) ? line : blank())); }, [customers, products, customerId]); useEffect(() => { if (!isAdmin && !salesmanName) setSalesmanName(defaultSalesman); }, [defaultSalesman, isAdmin, salesmanName]); const total = lines.reduce((sum, line) => sum + (products.find((p) => p.id === line.productId)?.rate || 0) * (+line.quantity || 0), 0); const addCustomer = async () => { if (!customerForm.name) return flash('Customer name is required.'); setCustomerSaving(true); try { const [created] = await database.addCustomer({ name: customerForm.name, mobile: customerForm.mobile || null, city: customerForm.city || null }); await refresh(true); setCustomerId(created.id); setCustomerForm(emptyCustomer()); setAddingCustomer(false); flash('Customer added and selected for this order.'); } catch (e) { flash(e.message); } finally { setCustomerSaving(false); } }; const submit = async (e) => { e.preventDefault(); const customer = customers.find((c) => c.id === customerId); const effectiveSalesman = (isAdmin ? salesmanName : defaultSalesman).trim(); if (!customer) return flash('Choose a customer before saving the order.'); if (!effectiveSalesman) return flash('Salesman name is required.'); const items = lines.map((line) => { const p = products.find((product) => product.id === line.productId); return p && { product_id: p.id, description: p.name, rate: p.rate, mrp: p.mrp, quantity: +line.quantity, amount: p.rate * +line.quantity }; }).filter(Boolean); const required = items.reduce((a, i) => ({ ...a, [i.product_id]: (a[i.product_id] || 0) + i.quantity }), {}); const insufficient = products.find((p) => required[p.id] > p.stock); if (!customer || !items.length || items.some((i) => i.quantity <= 0)) return flash('Add a customer, product, and quantity.'); if (insufficient) return flash(`Only ${insufficient.stock} units of ${insufficient.name} are available.`); setSaving(true); try { const number = `DO-${String(orders.length + 1).padStart(5, '0')}`; await database.createOrder({ order: { order_number: number, customer_id: customer.id, salesman_name: effectiveSalesman, taxable_amount: total, total_amount: total, status: 'draft', created_by: user.id }, items }); await refresh(true); setLines([blank()]); setSalesmanName(isAdmin ? '' : defaultSalesman); flash(`${number} saved and inventory synced.`); } catch (e) { flash(e.message); } finally { setSaving(false); } }; const blankBillLine = () => ({ productId: '', quantity: 1 }); const openBillEdit = (order) => { setEditingBill(order); setBillCustomerId(order.customerId || ''); setBillLines(order.items.map((item) => ({ productId: item.productId, quantity: item.quantity }))); }; const saveBill = async (e) => { e.preventDefault(); const items = billLines.map((line) => { const product = products.find((item) => item.id === line.productId); return product && { product_id: product.id, description: product.name, rate: product.rate, mrp: product.mrp, quantity: +line.quantity, amount: product.rate * +line.quantity }; }).filter(Boolean); if (!billCustomerId || items.length !== billLines.length || !items.length || items.some((item) => item.quantity <= 0)) return flash('Select a product and quantity for every line.'); setBillSaving(true); try { await database.updateOrderWithItems(editingBill.id, billCustomerId, items); await refresh(true); setEditingBill(null); setBillLines([]); flash('Delivery bill updated and inventory adjusted.'); } catch (error) { flash(error.message); } finally { setBillSaving(false); } }; const usable = products.length && customers.length; const openPrint = (from = fromDate, to = toDate) => { if (!from || !to || from > to) return flash('Choose a valid date range.'); const selected = orders.filter((order) => order.orderDate >= from && order.orderDate <= to); if (!selected.length) return flash('No delivery bills found for this period.'); setPrintOrders(selected); }; return <>{printOrders.length > 0 && <BillPrint orders={printOrders} onClose={() => setPrintOrders([])}/>}<Title title="Delivery Orders" subtitle="Create an order and reduce Supabase inventory on confirmation"/><div className="order-grid"><form className="card order-form" onSubmit={submit}><h2>New delivery order</h2><label>Customer<select value={customerId} onChange={(e) => setCustomerId(e.target.value)} disabled={!customers.length}>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>{isAdmin && <label>Salesman name<input type="text" value={salesmanName} onChange={(e) => setSalesmanName(e.target.value)} placeholder="Enter salesman name"/></label>}{!isAdmin && <label>Salesman name<input type="text" value={defaultSalesman} readOnly/></label>}<button type="button" className="add-customer" onClick={() => setAddingCustomer(!addingCustomer)}>＋ Add customer</button>{addingCustomer && <div className="inline-customer"><Input label="Customer name" value={customerForm.name} onChange={(v) => setCustomerForm({ ...customerForm, name: v })}/><Input label="Mobile number" value={customerForm.mobile} onChange={(v) => setCustomerForm({ ...customerForm, mobile: v })}/><Input label="City" value={customerForm.city} onChange={(v) => setCustomerForm({ ...customerForm, city: v })}/><button type="button" className="secondary" onClick={addCustomer} disabled={customerSaving}>{customerSaving ? 'Adding…' : 'Save customer'}</button></div>}<div className="line-head"><b>Product lines</b></div>{lines.map((line, index) => <div className="order-line" key={index}><select value={line.productId} disabled={!products.length} onChange={(e) => setLines(lines.map((l, i) => i === index ? { ...l, productId: e.target.value } : l))}><option value="">Select item</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name} — {money(p.rate)}</option>)}</select><input type="number" min="1" value={line.quantity} onChange={(e) => setLines(lines.map((l, i) => i === index ? { ...l, quantity: e.target.value } : l))}/><b>{money((products.find((p) => p.id === line.productId)?.rate || 0) * (+line.quantity || 0))}</b>{lines.length > 1 && <button type="button" className="remove-line" onClick={() => setLines(lines.filter((_, i) => i !== index))}>×</button>}</div>)}<button type="button" className="add-line" disabled={!products.length} onClick={() => setLines([...lines, blank()])}>＋ Add line</button><div className="order-total"><span>Order value</span><b>{money(total)}</b></div><button className="primary" disabled={!usable || saving}>{saving ? 'Confirming…' : 'Confirm delivery'}</button><small>{usable ? 'Confirmation records a stock-out movement.' : 'Add products and customers in Supabase first.'}</small></form></div><section className="card print-range"><div><h2>Print delivery bills</h2><p>Print every bill for today or choose a date range.</p></div><div className="print-range-controls"><label>From<input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}/></label><label>To<input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}/></label><button type="button" className="secondary" onClick={() => openPrint(today, today)}>Print today</button><button type="button" className="primary" onClick={() => openPrint()}>Print range</button></div></section>{editingBill && <form className="card bill-editor" onSubmit={saveBill}><div className="bill-editor-head"><div><h2>Edit delivery bill</h2><small>{editingBill.number}</small></div><label>Customer<select value={billCustomerId} onChange={(e) => setBillCustomerId(e.target.value)}>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></label></div><div className="line-head"><b>Product lines</b><button type="button" className="add-line" onClick={() => setBillLines([...billLines, blankBillLine()])}>＋ Add line</button></div>{billLines.map((line, index) => { const product = products.find((item) => item.id === line.productId); return <div className="order-line" key={index}><select value={line.productId} onChange={(e) => setBillLines(billLines.map((item, i) => i === index ? { ...item, productId: e.target.value } : item))}><option value="">Select product</option>{products.map((item) => <option key={item.id} value={item.id}>{item.name} — {money(item.rate)}</option>)}</select><input type="number" min="1" value={line.quantity} onChange={(e) => setBillLines(billLines.map((item, i) => i === index ? { ...item, quantity: e.target.value } : item))}/><b>{money((product?.rate || 0) * (+line.quantity || 0))}</b><button type="button" className="remove-line" onClick={() => setBillLines(billLines.filter((_, i) => i !== index))}>×</button></div>})}<div className="order-total"><span>Revised bill total</span><b>{money(billLines.reduce((sum, line) => sum + (products.find((item) => item.id === line.productId)?.rate || 0) * (+line.quantity || 0), 0))}</b></div><div className="form-actions"><button className="primary" disabled={billSaving}>{billSaving ? 'Saving…' : 'Update bill'}</button><button type="button" className="secondary" onClick={() => { setEditingBill(null); setBillLines([]); }} disabled={billSaving}>Cancel</button></div></form>}<div className="card table-wrap"><div className="table-heading"><h2>Recent delivery orders</h2><small>{orders.length ? `${orders.length} synced orders` : 'No delivery orders in Supabase yet'}</small></div>{orders.length > 0 && <table><thead><tr><th>ORDER NO.</th><th>CUSTOMER</th><th>ITEMS</th><th>AMOUNT</th><th>STATUS</th><th>ACTIONS</th></tr></thead><tbody>{orders.map((o) => <tr key={o.id}><td><b>{o.number}</b></td><td>{o.customer}</td><td>{o.items.map((i) => `${i.product} × ${i.quantity}`).join(', ')}</td><td>{money(o.amount)}</td><td><mark className="available">{o.status}</mark></td><td><div className="row-actions"><button type="button" onClick={() => openBillEdit(o)}>Edit bill</button></div></td></tr>)}</tbody></table>}</div></> }
-function BillPrint({ orders, onClose }) { return createPortal(<div className="challan-modal"><div className="challan-actions"><button className="outline" onClick={onClose}>Close</button><button className="print-button" onClick={() => window.print()}>Print</button></div>{orders.map((order) => <article className="bill-page" key={order.id}><div className="bill-template"><header className="template-header"><h1>GURUKRIPA TRADING</h1><div>SHOP NO 1, SATYA SAI MAHAL, GANDHI ROAD, ULHASNAGAR - 5 &nbsp; * &nbsp; MOB. 9623079356</div></header><div className="template-gst"><span>GST NO. 27AARPV49651Z7</span><span>FSSAI : 21526022003603</span></div><div className="template-banner">DELIVERY ORDER</div><section className="template-info"><div><p><b>PARTY NAME :</b> {order.customer}</p><p><b>ADDRESS :</b> {order.customerAddress}</p><p><b>GST NO.</b></p><p><b>FSSAI NO.</b></p></div><div><p><b>ORDER NO.</b> {order.number}</p><p><b>DATE :</b> {order.date}</p><p><b>SALESMAN :</b> {order.salesman || '—'}</p></div></section><table className="template-items"><thead><tr><th>SR.</th><th>DESCRIPTION</th><th>RATE</th><th>MRP</th><th>QTY</th><th>AMOUNT</th></tr></thead><tbody>{order.items.map((item, index) => <tr key={index}><td>{index + 1}</td><td>{item.product}</td><td>{money(item.rate)}</td><td>{money(item.mrp)}</td><td>{item.quantity}</td><td>{money(item.amount)}</td></tr>)}{Array.from({ length: Math.max(0, 12 - order.items.length) }, (_, index) => <tr key={'blank-' + index}><td>{order.items.length + index + 1}</td><td/><td/><td/><td/><td/></tr>)}</tbody></table><footer className="template-footer"><div className="template-terms"><b>SUBJECT TO ULHASNAGAR JURISDICTION</b><p>*I/We hereby certify that the foods/food mentioned in this invoice are of the stated nature and quality. Particulars given above are true and correct. E. &amp; O.E.</p></div><table className="template-totals"><tbody><tr className="template-total"><th>TOTAL</th><td>{order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</td><td>{money(order.amount)}</td></tr><tr><th>CGST</th><td></td><td></td></tr><tr><th>SGST</th><td></td><td></td></tr><tr><th>TOTAL AMOUNT</th><td></td><td></td></tr></tbody></table></footer></div></article>)}</div>, document.body) }
-function ReportPrint({ children, onClose }) { useEffect(() => { const close = () => onClose(); const timer = window.setTimeout(() => window.print(), 50); window.addEventListener('afterprint', close, { once: true }); return () => { window.clearTimeout(timer); window.removeEventListener('afterprint', close); }; }, [onClose]); return createPortal(<div className="report-print-modal">{children}</div>, document.body); }
-function Reports({ orders, flash }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const [fromDate, setFromDate] = useState(today);
-  const [toDate, setToDate] = useState(today);
-  const [reportOrders, setReportOrders] = useState([]);
-  const [summaryFromDate, setSummaryFromDate] = useState(today);
-  const [summaryToDate, setSummaryToDate] = useState(today);
-  const [summaryItems, setSummaryItems] = useState([]);
-  const [printTarget, setPrintTarget] = useState('');
-  const dateLabel = (from, to) => from === to
-    ? new Date(`${from}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
-    : `${new Date(`${from}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${new Date(`${to}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
-  const generate = () => {
-    if (!fromDate || !toDate || fromDate > toDate) return flash('Choose a valid date or date range.');
-    setReportOrders(orders.filter((order) => order.orderDate >= fromDate && order.orderDate <= toDate).sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true })));
-  };
-  const generateSummary = () => {
-    if (!summaryFromDate || !summaryToDate || summaryFromDate > summaryToDate) return flash('Choose a valid date or date range.');
-    const totals = new Map();
-    orders.filter((order) => order.orderDate >= summaryFromDate && order.orderDate <= summaryToDate).forEach((order) => {
-      order.items.forEach((item) => {
-        const name = (item.product || 'Unnamed item').trim();
-        const key = name.toLocaleLowerCase();
-        const current = totals.get(key) || { name, quantity: 0 };
-        current.quantity += Number(item.quantity) || 0;
-        totals.set(key, current);
-      });
-    });
-    setSummaryItems([...totals.values()].sort((a, b) => a.name.localeCompare(b.name)));
-  };
-  const printSummary = () => setPrintTarget('summary');
-  const printPaymentReport = () => setPrintTarget('payment');
-  const totalAmount = reportOrders.reduce((sum, order) => sum + order.amount, 0);
-  const totalQuantity = summaryItems.reduce((sum, item) => sum + item.quantity, 0);
-  const quantity = (value) => Number(value).toLocaleString('en-IN', { maximumFractionDigits: 3 });
-  const paymentReport = () => <section className="payment-report" aria-label="Order Payment Report"><div className="payment-report-heading"><b>GURUKRIPA TRADING</b><h2>ORDER PAYMENT REPORT</h2><p>{dateLabel(fromDate, toDate)}</p></div><div className="card table-wrap"><table><thead><tr><th>ORDER NUMBER</th><th>CUSTOMER NAME</th><th className="number">AMOUNT</th><th className="number">CASH</th><th className="number">G-PAY</th></tr></thead><tbody>{reportOrders.map((order) => <tr key={order.id}><td><b>{order.number}</b></td><td>{order.customer}</td><td className="number">{money(order.amount)}</td><td className="number"></td><td className="number"></td></tr>)}{!reportOrders.length && <tr><td colSpan="5" className="report-empty">Generate a report to view orders for the selected period.</td></tr>}</tbody>{reportOrders.length > 0 && <tfoot><tr><th colSpan="2">TOTAL</th><th className="number">{money(totalAmount)}</th><th className="number"></th><th className="number"></th></tr></tfoot>}</table></div></section>;
-  const deliverySummaryReport = () => <section className="delivery-summary-report" aria-label="Delivery Summary"><div className="delivery-summary-heading"><b>GURUKRIPA TRADING</b><h2>DELIVERY SUMMARY</h2><p>{dateLabel(summaryFromDate, summaryToDate)}</p></div><div className="table-wrap"><table><thead><tr><th>ITEM NAME</th><th className="number">TOTAL QUANTITY</th></tr></thead><tbody>{summaryItems.map((item) => <tr key={item.name.toLocaleLowerCase()}><td><b>{item.name}</b></td><td className="number">{quantity(item.quantity)}</td></tr>)}{!summaryItems.length && <tr><td colSpan="2" className="report-empty">Generate a report to view item quantities for the selected period.</td></tr>}</tbody>{summaryItems.length > 0 && <tfoot><tr><th>TOTAL QUANTITY</th><th className="number">{quantity(totalQuantity)}</th></tr></tfoot>}</table></div></section>;
-  return <><Title title="Order Payment Report" subtitle="Payments recorded against delivery orders"/>
-    <section className="card payment-report-controls"><label>From<input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}/></label><label>To<input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}/></label><button type="button" className="primary" onClick={generate}>Generate Report</button><button type="button" className="secondary" onClick={printPaymentReport} disabled={!reportOrders.length}>Print Report</button></section>
-    {paymentReport()}
-    <section className="delivery-summary-section"><Title title="Delivery Summary" subtitle="Consolidated item quantities required for delivery"/>
-      <section className="card delivery-summary-controls"><label>From<input type="date" value={summaryFromDate} onChange={(e) => setSummaryFromDate(e.target.value)}/></label><label>To<input type="date" value={summaryToDate} onChange={(e) => setSummaryToDate(e.target.value)}/></label><button type="button" className="primary" onClick={generateSummary}>Generate Report</button><button type="button" className="secondary" onClick={printSummary} disabled={!summaryItems.length}>Print Report</button></section>
-      {deliverySummaryReport()}
-    </section>{printTarget && <ReportPrint onClose={() => setPrintTarget('')}>{printTarget === 'payment' ? paymentReport() : deliverySummaryReport()}</ReportPrint>}</>
-}
+
 export default App;

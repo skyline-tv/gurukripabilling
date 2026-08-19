@@ -2,7 +2,7 @@
 @media print{.challan{break-after:page}.challan:last-child{break-after:auto}}
 .bill-page{width:210mm;min-height:297mm;margin:0 auto 20px;padding:10mm;background:#fff;box-shadow:0 8px 30px #0003;font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a}.bill-template{min-height:277mm;border:1.6px solid #000;display:flex;flex-direction:column;position:relative}.bill-template:before,.bill-template:after{content:'';position:absolute;width:14mm;height:14mm;border:1.4px solid #c9a227}.bill-template:before{top:-1.6px;left:-1.6px;border-right:0;border-bottom:0}.bill-template:after{right:-1.6px;bottom:-1.6px;border-left:0;border-top:0}.template-header{text-align:center;padding:7mm 6mm 3mm;border-bottom:1.6px solid #000}.template-header h1{margin:0;font-size:26pt;letter-spacing:2.5px;color:#1b2a4a}.template-rule{width:46mm;height:1.4px;background:#c9a227;margin:2mm auto 2.5mm}.template-header>div:last-child{font-size:9.5pt;font-weight:600}.template-gst{display:flex;justify-content:space-between;padding:2.4mm 6mm;border-bottom:1.6px solid #000;background:#fafafa;font-size:9.5pt;font-weight:700}.template-banner{text-align:center;background:#ffd400;padding:2.4mm;border-bottom:1.6px solid #000;font-size:12pt;font-weight:800;letter-spacing:5px;color:#2a2100}.template-info{display:grid;grid-template-columns:1fr 1fr;border-bottom:1.6px solid #000;font-size:9.5pt;font-weight:700}.template-info>div{padding:4mm 6mm}.template-info>div:first-child{border-right:1.6px solid #000}.template-info p{min-height:5mm;margin:0 0 3mm;border-bottom:.8px solid #000}.template-items{width:100%;border-collapse:collapse;table-layout:fixed;flex:1;font-size:9pt}.template-items th,.template-items td{border:.8px solid #000;padding:1mm 2mm;text-align:center;height:8mm;font-size:9pt}.template-items th{background:#b9c9ea;color:#1b2a4a;font-size:9pt}.template-items th:nth-child(1){width:12mm}.template-items th:nth-child(2){width:auto}.template-items th:nth-child(3),.template-items th:nth-child(4){width:22mm}.template-items th:nth-child(5){width:22mm}.template-items th:nth-child(6){width:36mm}.template-items td:nth-child(2){text-align:left}.template-footer{display:flex;border-top:1.6px solid #000}.template-terms{flex:1.4;padding:4mm 6mm;border-right:1.6px solid #000;text-align:center;font-size:7.8pt;line-height:1.6}.template-terms>b{display:block;margin-bottom:3mm;font-size:8.5pt;color:#1b2a4a;text-decoration:underline}.template-terms p{margin:0}.template-totals{width:42%;border-collapse:collapse;font-size:9pt}.template-totals th,.template-totals td{border:.8px solid #000;padding:1.8mm 3mm;text-align:left;font-size:9pt}.template-total th,.template-total td{background:#f6f7fb;color:#1b2a4a;font-weight:800}.template-signature{padding:4mm 8mm 2mm;text-align:right;font-size:9pt;font-weight:700}.template-signature b{display:block;margin-top:13mm}.template-blue-block{height:26mm;margin-top:auto;border-top:1.6px solid #000;background:#b9c9ea}@media print{.bill-page{width:210mm;min-height:297mm;margin:0;padding:10mm;box-shadow:none;break-after:page}.bill-page:last-child{break-after:auto}}
 .template-header h1{font-size:20pt;letter-spacing:1.5px;white-space:nowrap}
-.template-payment{display:grid;grid-template-columns:1.5fr .65fr .85fr;align-items:center;gap:5mm;padding:3mm 6mm 2mm}.template-bank{display:grid;gap:1mm;font-size:7.6pt;line-height:1.35}.template-bank b{font-size:9pt;color:#1b2a4a}.template-qr{display:grid;justify-items:center;gap:1mm;font-size:6.5pt;font-weight:700;text-align:center}.template-qr img{width:25mm;height:25mm;border:.8px solid #000;padding:1mm;background:#fff}.template-signature{padding:0 1mm 2mm;align-self:stretch}.template-signature b{margin-top:13mm}@media(max-width:600px){.template-payment{grid-template-columns:1fr}.template-qr{justify-items:start}.template-signature{min-height:20mm}}
+.template-payment{display:grid;grid-template-columns:1.5fr .65fr .85fr;align-items:start;gap:5mm;padding:3mm 6mm 2mm;border-top:1.6px solid #000}.template-bank{display:grid;gap:1mm;font-size:7.6pt;line-height:1.35}.template-bank b{font-size:9pt;color:#1b2a4a}.template-qr{display:grid;justify-items:center;gap:1mm;font-size:6.5pt;font-weight:700;text-align:center}.template-qr img{width:25mm;height:25mm;border:.8px solid #000;padding:1mm;background:#fff}.template-signature{padding:0 1mm 2mm;align-self:stretch}.template-signature b{margin-top:13mm}@media(max-width:600px){.template-payment{grid-template-columns:1fr}.template-qr{justify-items:start}.template-signature{min-height:20mm}}
 @page{size:A4 portrait;margin:14mm}@media print{body{background:#fff!important}body > *:not(.challan-modal):not(.payment-report):not(.delivery-summary-report),#root > *:not(.challan-modal):not(.payment-report):not(.delivery-summary-report){display:none!important}#root{display:block!important}.challan-modal,.challan-modal *,.payment-report,.payment-report *,.delivery-summary-report,.delivery-summary-report *{visibility:visible!important}.challan-modal{position:static!important;inset:auto!important;background:transparent!important;padding:0!important;overflow:visible!important}.challan-actions{display:none!important}.bill-page{width:210mm!important;min-height:auto!important;margin:0 auto 12mm!important;padding:0!important;box-shadow:none!important;page-break-after:always}.bill-page:last-child{page-break-after:auto}.bill-template{min-height:0!important}.payment-report,.delivery-summary-report{position:static!important;inset:auto!important;width:100%!important;border:0!important;border-radius:0!important;padding:0!important}.payment-report .table-wrap,.delivery-summary-report .table-wrap{overflow:visible!important}.payment-report table,.delivery-summary-report table{width:100%!important;font-size:10pt}.payment-report thead,.delivery-summary-report thead{display:table-header-group}.payment-report tfoot,.delivery-summary-report tfoot{display:table-footer-group}.payment-report tr,.delivery-summary-report tr{break-inside:avoid}.payment-report th,.payment-report td,.delivery-summary-report th,.delivery-summary-report td{padding:9px 10px!important}.payment-report-heading,.delivery-summary-heading{margin-bottom:16px!important}.payment-report-heading b,.delivery-summary-heading b{font-size:18pt!important}.payment-report-heading h2,.delivery-summary-heading h2{font-size:12pt!important}body.printing-delivery-summary > *:not(.delivery-summary-report),body.printing-delivery-summary #root > *:not(.delivery-summary-report){display:none!important}body.printing-delivery-summary .payment-report,body.printing-delivery-summary .payment-report *{visibility:hidden!important}}
 
 @media print{body.printing-payment-report #root,body.printing-delivery-summary #root,body.printing-payment-report #root>.app,body.printing-delivery-summary #root>.app{display:block!important}body.printing-payment-report .app>aside,body.printing-payment-report .app>main>header,body.printing-payment-report .app>.toast,body.printing-payment-report .app main>.content>:not(.payment-report),body.printing-delivery-summary .app>aside,body.printing-delivery-summary .app>main>header,body.printing-delivery-summary .app>.toast,body.printing-delivery-summary .app main>.content>:not(.delivery-summary-section),body.printing-delivery-summary .delivery-summary-section>:not(.delivery-summary-report){display:none!important}body.printing-payment-report .payment-report,body.printing-delivery-summary .delivery-summary-report{display:block!important}.bill-template .template-header{display:block!important}}
@@ -13,5 +13,159 @@
 
 .report-print-modal{position:fixed;z-index:5;inset:0;overflow:auto;background:#fff;padding:24px}@media print{body>.report-print-modal.report-print-modal.report-print-modal{display:block!important;position:static!important;inset:auto!important;overflow:visible!important;background:#fff!important;padding:0!important}.report-print-modal,.report-print-modal *{visibility:visible!important}}
 
+.template-items col.col-sr { width: 12mm; }
+.template-items col.col-desc { width: auto; }
+.template-items col.col-rate,
+.template-items col.col-mrp,
+.template-items col.col-qty { width: 22mm; }
+.template-items col.col-amount { width: 36mm; }
+.template-items tfoot th,
+.template-items tfoot td { height: auto; vertical-align: middle; }
+.template-items tfoot th {
+  background: #fff;
+  color: #1b2a4a;
+  text-align: left;
+  font-weight: 800;
+  padding: 1.8mm 3mm;
+}
+.template-items tfoot td { text-align: center; }
+.template-items tfoot .template-total th,
+.template-items tfoot .template-total td {
+  background: #f6f7fb;
+  color: #1b2a4a;
+  font-weight: 800;
+}
+.template-items tfoot .template-terms {
+  text-align: center;
+  vertical-align: middle;
+  padding: 4mm 6mm;
+  font-size: 7.8pt;
+  line-height: 1.6;
+  font-weight: 400;
+}
+.template-items tfoot .template-terms > b {
+  display: block;
+  margin-bottom: 3mm;
+  font-size: 8.5pt;
+  color: #1b2a4a;
+  text-decoration: underline;
+}
+.template-items tfoot .template-terms p { margin: 0; }
+
 /* On-screen bill preview */
-.challan-modal{z-index:20;background:rgba(11,38,27,.72);backdrop-filter:blur(8px)}.challan-actions{position:sticky;top:16px;z-index:2;padding:10px;border:1px solid rgba(255,255,255,.2);border-radius:12px;background:rgba(255,255,255,.92);box-shadow:0 12px 32px #03170e42}.print-button,.outline{min-height:40px}.print-button:focus-visible,.outline:focus-visible{outline:3px solid rgba(227,173,69,.5);outline-offset:2px}.bill-page{box-shadow:0 18px 52px #03170e42;border-radius:3px;overflow:hidden}@media(max-width:600px){.challan-modal{padding:12px}.challan-actions{top:8px;margin-bottom:8px}.bill-page{margin-bottom:12px;box-shadow:0 8px 24px #03170e33}}
+.challan-modal{z-index:20;background:rgba(11,38,27,.72);backdrop-filter:blur(8px)}.challan-actions{position:sticky;top:16px;z-index:2;padding:10px;border:1px solid rgba(255,255,255,.2);border-radius:12px;background:rgba(255,255,255,.92);box-shadow:0 12px 32px #03170e42}.print-button,.outline{min-height:40px}.print-button:focus-visible,.outline:focus-visible{outline:3px solid rgba(227,173,69,.5);outline-offset:2px}@media(max-width:600px){.challan-modal{padding:12px}.challan-actions{top:8px;margin-bottom:8px}}
+
+/* Exact A4 invoice page (screen + print). */
+.bill-page {
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  min-height: 297mm;
+  max-height: 297mm;
+  padding: 8mm;
+  margin: 0 auto 20px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 18px 52px #03170e42;
+  border-radius: 0;
+}
+.bill-template {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.template-header { padding: 4mm 5mm 2mm; flex-shrink: 0; }
+.template-header h1 { font-size: 18pt; letter-spacing: 1.2px; }
+.template-gst, .template-banner, .template-info { flex-shrink: 0; }
+.template-gst { padding: 1.6mm 5mm; font-size: 8.5pt; }
+.template-banner { padding: 1.6mm; font-size: 11pt; letter-spacing: 4px; }
+.template-info { font-size: 8.5pt; }
+.template-info > div { padding: 2.5mm 5mm; }
+.template-info p { min-height: 4mm; margin: 0 0 2mm; }
+.template-items { flex: 1 1 auto; min-height: 0; }
+.template-items th,
+.template-items td { height: 6.2mm; padding: 0.4mm 1.6mm; font-size: 8pt; }
+.template-payment {
+  flex-shrink: 0;
+  gap: 3mm;
+  padding: 2mm 5mm 1.5mm;
+}
+.template-qr img { width: 22mm; height: 22mm; }
+.template-blue-block { height: 14mm; flex-shrink: 0; margin-top: 0; }
+
+@page { size: A4 portrait; margin: 12mm; }
+@page bill { size: A4 portrait; margin: 0; }
+
+@media print {
+  .bill-page {
+    page: bill;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    padding: 8mm !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    break-after: page;
+    page-break-after: always;
+  }
+  .bill-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .bill-template {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+  }
+}
+
+/* Fewer invoice borders */
+.bill-template {
+  border: 1px solid #1b2a4a;
+}
+.bill-template:before,
+.bill-template:after {
+  display: none;
+}
+.template-header,
+.template-gst,
+.template-banner,
+.template-info,
+.template-payment,
+.template-blue-block {
+  border-bottom: 0;
+  border-top: 0;
+}
+.template-header,
+.template-gst,
+.template-banner,
+.template-info {
+  border-bottom: 1px solid #cfd6e0;
+}
+.template-info > div:first-child {
+  border-right: 1px solid #cfd6e0;
+}
+.template-info p {
+  border-bottom: 0 !important;
+}
+.template-items {
+  border-collapse: collapse;
+  border: 1px solid #1b2a4a;
+}
+.template-items th,
+.template-items td {
+  border: 1px solid #1b2a4a !important;
+}
+.template-items tfoot .template-terms {
+  border: 1px solid #1b2a4a !important;
+}
+.template-qr img {
+  border: 0;
+  padding: 0;
+}

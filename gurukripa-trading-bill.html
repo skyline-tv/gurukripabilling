@@ -213,11 +213,45 @@
   .totals tr.total td.label { font-size: 11pt; color: var(--navy); }
   .totals tr.total td { background: #f6f7fb; }
 
+  .payment {
+    display: grid;
+    grid-template-columns: 1.5fr .65fr .85fr;
+    align-items: start;
+    gap: 5mm;
+    padding: 3mm 6mm 2mm;
+    border-top: 1.6px solid var(--hair);
+  }
+  .bank {
+    display: grid;
+    gap: 1mm;
+    font-size: 7.6pt;
+    line-height: 1.35;
+  }
+  .bank b { font-size: 9pt; color: var(--navy); }
+  .qr {
+    display: grid;
+    justify-items: center;
+    gap: 1mm;
+    font-size: 6.5pt;
+    font-weight: 700;
+    text-align: center;
+  }
+  .qr img {
+    width: 25mm;
+    height: 25mm;
+    border: 0.8px solid var(--hair);
+    padding: 1mm;
+    background: #fff;
+  }
   .signature {
     text-align: right;
-    padding: 4mm 8mm 2mm;
+    padding: 0 1mm 2mm;
     font-weight: 700;
     font-size: 9.5pt;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
   }
   .signature .auth { margin-top: 13mm; }
 
@@ -296,9 +330,24 @@
         </div>
       </div>
 
-      <div class="signature">
-        <div>For Guru Kripa Trading</div>
-        <div class="auth">Authorised Signatory</div>
+      <div class="payment">
+        <div class="bank">
+          <b>Bank Details</b>
+          <span>Name of Bank: Union Bank of India</span>
+          <span>Account Name: GURUKRIPA TRADING</span>
+          <span>Account Number: 681901010050590</span>
+          <span>IFSC Code: UBIN0568198</span>
+          <span>Branch: NETAJI CHOWK - ULHASNAGAR</span>
+          <span>UPI ID: 9623079356@okbizaxis</span>
+        </div>
+        <div class="qr">
+          <img src="public/upi-qr.svg" alt="UPI QR for 9623079356@okbizaxis">
+          <span>Scan to pay</span>
+        </div>
+        <div class="signature">
+          <div>For Guru Kripa Trading</div>
+          <div class="auth">Authorised Signatory</div>
+        </div>
       </div>
 
       <div class="blue-block"></div>

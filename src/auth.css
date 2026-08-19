@@ -6,7 +6,7 @@
 }
 
 .login-brand {
-  background: linear-gradient(135deg, #123f30 0%, #0f3526 100%);
+  background: #174f38;
   color: #fff;
   padding: clamp(45px, 8vw, 120px);
   display: flex;
@@ -38,7 +38,7 @@
   border-radius: 12px;
   background: linear-gradient(135deg, #e4ae47 0%, #d9a940 100%);
   color: #17412f;
-  font: 700 27px 'Playfair Display';
+  font: 800 16px 'IBM Plex Sans', 'Segoe UI', sans-serif;
   box-shadow: 0 4px 12px rgba(228, 174, 71, 0.3);
 }
 
@@ -51,14 +51,14 @@
 }
 
 .login-brand h1 {
-  font: 700 clamp(38px, 4.2vw, 60px) 'Playfair Display';
+  font: 700 clamp(32px, 4.2vw, 48px) 'IBM Plex Sans', 'Segoe UI', sans-serif;
   letter-spacing: -1.5px;
   line-height: 1.05;
   margin: 0;
 }
 
 .login-brand h1 span {
-  color: #e9b94f;
+  color: #c9a227;
 }
 
 .login-brand > small {
@@ -103,7 +103,7 @@
 
 .login-logo b {
   display: block;
-  font: 700 17px 'Playfair Display';
+  font: 700 17px 'IBM Plex Sans', 'Segoe UI', sans-serif;
   color: #173b2c;
 }
 
@@ -124,7 +124,7 @@
 }
 
 .login-card h2 {
-  font: 700 29px 'Playfair Display';
+  font: 700 26px 'IBM Plex Sans', 'Segoe UI', sans-serif;
   margin: 0;
   color: #192d23;
 }
@@ -176,7 +176,7 @@
 
 .login-submit {
   width: 100%;
-  background: linear-gradient(135deg, #11724b 0%, #0a5539 100%);
+  background: #174f38;
   color: #fff;
   border: 0;
   border-radius: 8px;
@@ -192,9 +192,9 @@
 }
 
 .login-submit:hover {
-  background: linear-gradient(135deg, #0a5539 0%, #07412c 100%);
+  background: #123e2e;
   box-shadow: 0 4px 16px rgba(17, 114, 75, 0.3);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .login-submit:active {
