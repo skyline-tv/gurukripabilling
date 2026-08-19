@@ -1,4 +1,4 @@
-export const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+export const money = (value) => Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
 export const DEFAULT_GST_PERCENT = 5;
 export const COMPANY_GSTIN = '27AARPV49651Z7';
